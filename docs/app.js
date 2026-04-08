@@ -3,23 +3,22 @@
  * Canvas renderer, layout engine, and interactivity.
  */
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-
 const state = {
-  model: null,        // current model data (from JSON)
-  modelId: "mnist-8", // current model key
-  view: "mosaic",     // "mosaic" | "layers"
-  palette: "inferno", // colormap key
+  model: null,
+  content: {},
+  modelId: "mnist-8",
+  view: "mosaic",
+  palette: "inferno",
+  normalization: "clipped",
   zoom: 1,
-  panX: 0,
-  panY: 0,
-  hoveredWeight: null, // { value, layerName, index, x, y }
+  minZoom: 1,
+  maxZoom: 24,
+  selectedLayer: null,
   isDragging: false,
   dragStartX: 0,
   dragStartY: 0,
-  selectedLayer: null, // null = all layers
+  dragScrollLeft: 0,
+  dragScrollTop: 0,
 };
 
 const MODELS = {
@@ -28,459 +27,768 @@ const MODELS = {
   "cifar10-tiny": { file: "models/cifar10-tiny.json", label: "CIFAR-10 Tiny — The Landscape" },
 };
 
-// ---------------------------------------------------------------------------
-// Gallery placards
-// ---------------------------------------------------------------------------
-
-const PLACARDS = {
-  "iris-mlp": {
-    title: "The Micro-Sprite",
-    subtitle: "Iris MLP, 67 weights, 2026",
-    text: `At just 67 weights arranged in a 9×9 grid, The Micro-Sprite is a study in minimalism — a haiku written in gradient descent. The composition is intimate: two compact blocks of color separated by thin bias bands, like a diptych in a reliquary. The upper register (the hidden layer) shows eight small columns of four weights each, their values splayed across the colormap in broad, confident strokes. No two columns are alike — each has learned a different "question" to ask of an iris flower's measurements.
-
-The lower register is even sparser: three rows of eight, the output layer's final vote on species identity. Here the colors are more polarized — the model has made up its mind. Warm tones pull toward one class, cool tones push away. The bias neurons appear as single bright pixels punctuating each block, tiny but decisive, like the period at the end of a sentence.
-
-What is remarkable about The Micro-Sprite is not its beauty but its sufficiency. These 67 numbers, each discovered through hundreds of passes over 150 flower measurements, are enough to classify iris species with near-perfect accuracy. The image is a reminder that intelligence — at least the narrow, botanical kind — can be very small indeed.`,
-    layerAnnotations: {
-      "fc1.weight": "Eight learned 'questions' about petal and sepal geometry — each column a different way of seeing a flower.",
-      "fc1.bias": "Threshold offsets — how much evidence each hidden neuron needs before it activates.",
-      "fc2.weight": "The final vote: three rows mapping eight features to three species. Warm = 'yes,' cool = 'no.'",
-      "fc2.bias": "Decision thresholds for each species prediction.",
-    },
-  },
-  "mnist-8": {
-    title: "The Portrait",
-    subtitle: "MNIST-8 Convolutional Neural Network, 5,994 weights, 2019",
-    text: `At first glance, a field of muted earth tones — ochre, umber, and charcoal — disrupted by scattered flares of vermillion and cobalt. The composition reads as abstract expressionism at the macro level, but zoom in and structure emerges: repeating 5×5 motifs in the upper registers where the convolutional filters live, giving way to the dense, grainy texture of the fully-connected layer below. The effect is not unlike looking at a woven textile from across a room, then pressing your face to the fabric to discover its thread structure.
-
-These patterns are not decorative. The bright diagonal striations in the first convolutional block are edge detectors — the model has independently discovered that handwriting is built from oriented strokes, the same insight that drove David Marr's computational theory of vision in the 1980s. The second convolutional block, more complex and less legible, combines those edges into curves and junctions. By the time we reach the dense layer at the bottom — a wide, noisy band of near-zero values punctuated by sharp peaks — the model has abstracted away all spatial structure and is thinking purely in terms of "digit-ness."
-
-What is remarkable is that no one designed these patterns. They are the residue of gradient descent: hundreds of epochs of a loss function pulling 5,994 numbers toward an arrangement that correctly classifies 98.9% of handwritten digits. The image you see is an optimization landscape frozen at its minimum — a mathematical fossil, beautiful in the way that a crystal is beautiful, not by intention but by the relentless pressure of structure seeking its lowest energy state.`,
-    layerAnnotations: {
-      "Parameter5": "Eight 5×5 convolutional kernels — the model's first attempt to see. Each filter has learned to detect a different oriented edge or gradient, recapitulating decades of computer vision research in a few hundred training steps.",
-      "Parameter6": "Bias values for the first conv layer — subtle threshold adjustments.",
-      "Parameter87": "Sixteen 5×5 filters operating on eight input channels — 3,200 weights that combine simple edges into curves, corners, and junctions. The visual complexity increases dramatically.",
-      "Parameter88": "Bias values for the second conv layer.",
-      "Parameter193": "The dense classification layer — 2,560 weights that map spatial features into digit identity. The texture here is noise-like because spatial structure has been abstracted away; only statistical signatures of each digit class remain.",
-      "Parameter194": "Output bias — ten values, one per digit, encoding the model's prior expectation for each class.",
-    },
-  },
-  "cifar10-tiny": {
-    title: "The Landscape",
-    subtitle: "CIFAR-10 Tiny CNN, 14,410 weights, 2026",
-    text: `The Landscape is the largest piece in the gallery, and the most visually complex. At 121×121 pixels, it rewards patience — what initially appears as television static resolves, on closer inspection, into layered geological strata. The three convolutional blocks form distinct horizontal bands of increasing density, like sedimentary rock viewed in cross-section, each layer deposited by a different epoch of learning.
-
-The first stratum is the thinnest and most colorful: eight tiny 3×3 filters operating on three color channels. These are the model's retinas — simple color-edge detectors that respond to red-green boundaries, brightness gradients, and blue-sky-against-brown-ground transitions. They are the only layer that "sees" color directly, and their vivid hues reflect this intimacy with the raw pixel data of photographs.
-
-Below lies the second stratum: sixteen filters reading from eight channels, 1,152 weights of increasing subtlety. And below that, the deepest convolutional layer — 4,608 weights in thirty-two filters, their patterns now too abstract for the human eye to decode. These neurons are thinking about wings, wheels, and whiskers — the parts of objects that distinguish an airplane from an automobile.
-
-The dense layer at the base — 8,192 weights — is a vast, stippled plain. This is where spatial reasoning gives way to categorical judgment. The model has compressed a 32×32 color photograph into sixteen abstract features, and from those sixteen numbers, it will guess whether it's looking at a ship or a horse. The weight painting of this layer has the quality of a Seurat pointillist canvas: meaningless up close, meaningful at a distance, each dot placed not by artistic intention but by the mathematics of backpropagation.`,
-    layerAnnotations: {
-      "conv1.weight": "Eight 3×3 color filters — the model's retinas. Each kernel learns to detect a different color-edge combination in the raw photograph.",
-      "conv1.bias": "Bias for the first conv layer.",
-      "conv2.weight": "Sixteen filters combining first-layer edges into textures and corners — 1,152 weights of increasing visual abstraction.",
-      "conv2.bias": "Bias for the second conv layer.",
-      "conv3.weight": "Thirty-two deep filters — 4,608 weights encoding parts of objects: curves of wings, straight edges of buildings, fur textures of animals.",
-      "conv3.bias": "Bias for the third conv layer.",
-      "fc1.weight": "The dense mapping — 8,192 weights compressing spatial features into 16 abstract category signals. A pointillist canvas of learned associations.",
-      "fc1.bias": "Bias for the dense layer.",
-      "fc2.weight": "The final classifier — 160 weights casting ten votes, one per object category.",
-      "fc2.bias": "Output bias — prior expectations for each of the ten CIFAR-10 categories.",
-    },
-  },
+const NORMALIZATION_LABELS = {
+  global: "Global",
+  clipped: "Clipped",
+  "per-layer": "Per-layer",
 };
 
-// ---------------------------------------------------------------------------
-// Layout
-// ---------------------------------------------------------------------------
+let currentLayout = null;
 
-function computeMosaicLayout(model) {
-  const allWeights = [];
-  const weightMeta = [];
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
+function computeGrid(total) {
+  const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
+  const rows = Math.max(1, Math.ceil(total / cols));
+  return { cols, rows };
+}
+
+function flattenEntries(model) {
+  const entries = [];
   for (const layer of model.layers) {
     for (let i = 0; i < layer.weights.length; i++) {
-      allWeights.push(layer.weights[i]);
-      weightMeta.push({ layer: layer.name, index: i, shape: layer.shape });
+      entries.push({
+        layerName: layer.name,
+        shape: layer.shape,
+        index: i,
+        value: layer.weights[i],
+      });
+    }
+  }
+  return entries;
+}
+
+function collapseShape(shape) {
+  const collapsed = shape.filter((dim) => dim !== 1);
+  return collapsed.length ? collapsed : [1];
+}
+
+function unravelIndex(index, shape) {
+  if (!shape.length) return [index];
+
+  const coords = new Array(shape.length);
+  let remainder = index;
+
+  for (let i = shape.length - 1; i >= 0; i--) {
+    const dim = shape[i];
+    coords[i] = remainder % dim;
+    remainder = Math.floor(remainder / dim);
+  }
+
+  return coords;
+}
+
+function formatTensorIndex(index, shape) {
+  return unravelIndex(index, shape).map((coord) => `[${coord}]`).join("");
+}
+
+function percentileSorted(sorted, fraction) {
+  if (!sorted.length) return 0;
+  const idx = (sorted.length - 1) * fraction;
+  const low = Math.floor(idx);
+  const high = Math.ceil(idx);
+  if (low === high) return sorted[low];
+  const t = idx - low;
+  return sorted[low] + (sorted[high] - sorted[low]) * t;
+}
+
+function computeRange(weights, mode = "global") {
+  if (!weights.length) return { min: -1, max: 1 };
+
+  let min;
+  let max;
+
+  if (mode === "clipped") {
+    const sorted = [...weights].sort((a, b) => a - b);
+    min = percentileSorted(sorted, 0.01);
+    max = percentileSorted(sorted, 0.99);
+  } else {
+    min = Infinity;
+    max = -Infinity;
+    for (const weight of weights) {
+      if (weight < min) min = weight;
+      if (weight > max) max = weight;
     }
   }
 
-  const total = allWeights.length;
-  const cols = Math.ceil(Math.sqrt(total));
-  const rows = Math.ceil(total / cols);
-
-  return { allWeights, weightMeta, cols, rows, total };
-}
-
-function computeLayerLayout(model, selectedLayer) {
-  const layouts = [];
-  const layers = selectedLayer
-    ? model.layers.filter((l) => l.name === selectedLayer)
-    : model.layers;
-
-  for (const layer of layers) {
-    const n = layer.weights.length;
-    // Use natural 2D shape if available, else make a square-ish grid
-    let cols, rows;
-    if (layer.shape.length === 2) {
-      rows = layer.shape[0];
-      cols = layer.shape[1];
-    } else if (layer.shape.length === 4) {
-      // Conv: [out, in, h, w] → show as grid of kernels
-      const [outC, inC, kH, kW] = layer.shape;
-      cols = inC * kW + (inC - 1); // kernels side by side with 1px gap
-      rows = outC * kH + (outC - 1);
-      // Simplified: just flatten
-      cols = Math.ceil(Math.sqrt(n));
-      rows = Math.ceil(n / cols);
-    } else {
-      cols = Math.ceil(Math.sqrt(n));
-      rows = Math.ceil(n / cols);
-    }
-    layouts.push({ layer, cols, rows });
+  if (min === max) {
+    const delta = Math.abs(min) || 1;
+    min -= delta * 0.5;
+    max += delta * 0.5;
   }
-  return layouts;
-}
 
-// ---------------------------------------------------------------------------
-// Rendering
-// ---------------------------------------------------------------------------
-
-function getGlobalMinMax(model) {
-  let min = Infinity, max = -Infinity;
-  for (const layer of model.layers) {
-    if (layer.min < min) min = layer.min;
-    if (layer.max > max) max = layer.max;
-  }
   return { min, max };
 }
 
-function renderMosaic(ctx, model, colormap, width, height) {
-  const layout = computeMosaicLayout(model);
-  const { min, max } = getGlobalMinMax(model);
-  const cmFn = COLORMAPS[colormap];
+function buildRangeContext(layers) {
+  const allWeights = layers.flatMap((layer) => layer.weights);
+  return {
+    global: computeRange(allWeights, "global"),
+    clipped: computeRange(allWeights, "clipped"),
+    perLayer: new Map(
+      layers.map((layer) => [layer.name, computeRange(layer.weights, "global")])
+    ),
+  };
+}
 
-  if (!cmFn) return layout;
+function getEntryRange(entry, rangeContext) {
+  if (state.normalization === "per-layer") {
+    return rangeContext.perLayer.get(entry.layerName) || rangeContext.global;
+  }
+  if (state.normalization === "clipped") {
+    return rangeContext.clipped;
+  }
+  return rangeContext.global;
+}
 
-  const pixelW = width / layout.cols;
-  const pixelH = height / layout.rows;
+function normalizeEntry(entry, rangeContext) {
+  const range = getEntryRange(entry, rangeContext);
+  return normalizeWeight(entry.value, range.min, range.max);
+}
 
-  // Handle ai-pixel special mode: pack 3 weights per pixel as RGB
-  if (colormap === "aipixel") {
-    for (let i = 0; i < layout.total; i += 3) {
-      const x = (Math.floor(i / 3)) % layout.cols;
-      const y = Math.floor((Math.floor(i / 3)) / layout.cols);
-      const r = i < layout.total ? Math.round(normalizeWeight(layout.allWeights[i], min, max) * 255) : 128;
-      const g = i + 1 < layout.total ? Math.round(normalizeWeight(layout.allWeights[i + 1], min, max) * 255) : 128;
-      const b = i + 2 < layout.total ? Math.round(normalizeWeight(layout.allWeights[i + 2], min, max) * 255) : 128;
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(x * pixelW, y * pixelH, pixelW + 0.5, pixelH + 0.5);
-    }
-    return layout;
+function buildMosaicLayout(model, packSize = 1) {
+  const entries = flattenEntries(model);
+  const pixelCount = Math.ceil(entries.length / packSize);
+  const { cols, rows } = computeGrid(pixelCount);
+  const pixels = [];
+
+  for (let i = 0; i < pixelCount; i++) {
+    pixels.push(entries.slice(i * packSize, i * packSize + packSize));
   }
 
-  for (let i = 0; i < layout.total; i++) {
-    const x = i % layout.cols;
-    const y = Math.floor(i / layout.cols);
-    const t = normalizeWeight(layout.allWeights[i], min, max);
-    const [r, g, b] = cmFn.fn(t);
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(x * pixelW, y * pixelH, pixelW + 0.5, pixelH + 0.5);
+  return {
+    mode: "mosaic",
+    cols,
+    rows,
+    packSize,
+    pixelCount,
+    pixels,
+    rangeContext: buildRangeContext(model.layers),
+  };
+}
+
+function buildLayerShapeLayout(layer) {
+  const n = layer.weights.length;
+  const shape = collapseShape(layer.shape);
+  const coords = new Array(n);
+  const lookup = new Map();
+  let cols;
+  let rows;
+
+  function setCoord(index, x, y) {
+    coords[index] = { x, y };
+    lookup.set(`${x},${y}`, index);
+  }
+
+  if (shape.length === 1) {
+    cols = shape[0];
+    rows = 1;
+    for (let i = 0; i < n; i++) {
+      setCoord(i, i, 0);
+    }
+  } else if (shape.length === 2) {
+    rows = shape[0];
+    cols = shape[1];
+    let index = 0;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols && index < n; col++) {
+        setCoord(index, col, row);
+        index += 1;
+      }
+    }
+  } else if (shape.length === 4 && shape[2] <= 7 && shape[3] <= 7) {
+    const [outer, inner, kernelH, kernelW] = shape;
+    const gap = 1;
+    cols = inner * kernelW + Math.max(0, inner - 1) * gap;
+    rows = outer * kernelH + Math.max(0, outer - 1) * gap;
+    let index = 0;
+
+    for (let outerIdx = 0; outerIdx < outer; outerIdx++) {
+      for (let innerIdx = 0; innerIdx < inner; innerIdx++) {
+        for (let y = 0; y < kernelH; y++) {
+          for (let x = 0; x < kernelW && index < n; x++) {
+            const gridX = innerIdx * (kernelW + gap) + x;
+            const gridY = outerIdx * (kernelH + gap) + y;
+            setCoord(index, gridX, gridY);
+            index += 1;
+          }
+        }
+      }
+    }
+  } else {
+    const grid = computeGrid(n);
+    cols = grid.cols;
+    rows = grid.rows;
+    for (let i = 0; i < n; i++) {
+      setCoord(i, i % cols, Math.floor(i / cols));
+    }
+  }
+
+  return { cols, rows, coords, lookup };
+}
+
+function buildLayerLayout(model, selectedLayer) {
+  const layers = selectedLayer
+    ? model.layers.filter((layer) => layer.name === selectedLayer)
+    : model.layers;
+
+  const layout = {
+    mode: "layers",
+    blocks: [],
+    totalHeight: 220,
+    rangeContext: buildRangeContext(layers),
+  };
+
+  const canvasWidth = 640;
+  const horizontalPadding = 16;
+  const verticalPadding = 18;
+  const labelHeight = 20;
+  let yOffset = 0;
+
+  for (const layer of layers) {
+    const geometry = buildLayerShapeLayout(layer);
+    const pixelSize = Math.max(
+      2,
+      Math.min(12, Math.floor((canvasWidth - horizontalPadding * 2) / Math.max(1, geometry.cols)))
+    );
+    const width = geometry.cols * pixelSize;
+    const height = geometry.rows * pixelSize;
+    const x = Math.max(horizontalPadding, Math.floor((canvasWidth - width) / 2));
+    const y = yOffset + labelHeight;
+
+    layout.blocks.push({
+      layer,
+      ...geometry,
+      pixelSize,
+      x,
+      y,
+      width,
+      height,
+      labelY: yOffset + 12,
+    });
+
+    yOffset = y + height + verticalPadding;
+  }
+
+  layout.totalHeight = Math.max(yOffset, 220);
+  layout.canvasWidth = canvasWidth;
+  return layout;
+}
+
+function renderMosaic(ctx, model, palette) {
+  const packSize = palette === "aipixel" ? 3 : 1;
+  const layout = buildMosaicLayout(model, packSize);
+  const pixelSize = Math.max(2, Math.min(8, Math.floor(640 / layout.cols)));
+  const canvasWidth = layout.cols * pixelSize;
+  const canvasHeight = layout.rows * pixelSize;
+
+  ctx.canvas.width = canvasWidth;
+  ctx.canvas.height = canvasHeight;
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  const colormap = COLORMAPS[palette];
+
+  for (let index = 0; index < layout.pixelCount; index++) {
+    const group = layout.pixels[index];
+    const x = index % layout.cols;
+    const y = Math.floor(index / layout.cols);
+
+    if (packSize === 3) {
+      const rgb = [0, 1, 2].map((component) => {
+        const entry = group[component];
+        return entry
+          ? Math.round(normalizeEntry(entry, layout.rangeContext) * 255)
+          : 128;
+      });
+      ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    } else {
+      const t = normalizeEntry(group[0], layout.rangeContext);
+      const [r, g, b] = colormap.fn(t);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+    }
+
+    ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+  }
+
+  layout.pixelSize = pixelSize;
+  return layout;
+}
+
+function renderLayers(ctx, model) {
+  const layout = buildLayerLayout(model, state.selectedLayer);
+  const colormap = COLORMAPS[state.palette];
+
+  ctx.canvas.width = layout.canvasWidth;
+  ctx.canvas.height = layout.totalHeight;
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  ctx.font = "11px monospace";
+  ctx.textBaseline = "middle";
+
+  for (const block of layout.blocks) {
+    ctx.fillStyle = "#888";
+    ctx.fillText(`${block.layer.name} [${block.layer.shape.join("×")}]`, block.x, block.labelY);
+
+    for (let i = 0; i < block.layer.weights.length; i++) {
+      const point = block.coords[i];
+      const entry = {
+        layerName: block.layer.name,
+        shape: block.layer.shape,
+        index: i,
+        value: block.layer.weights[i],
+      };
+      const t = normalizeEntry(entry, layout.rangeContext);
+      const [r, g, b] = colormap.fn(t);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(
+        block.x + point.x * block.pixelSize,
+        block.y + point.y * block.pixelSize,
+        block.pixelSize,
+        block.pixelSize
+      );
+    }
   }
 
   return layout;
 }
 
-function renderLayers(ctx, model, colormap, canvasWidth, selectedLayer) {
-  const layouts = computeLayerLayout(model, selectedLayer);
-  const { min, max } = getGlobalMinMax(model);
-  const cmFn = COLORMAPS[colormap];
-  if (!cmFn || colormap === "aipixel") return layouts; // ai-pixel only works in mosaic
+function renderError(message) {
+  const canvas = document.getElementById("mosaic-canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = 640;
+  canvas.height = 220;
+  ctx.fillStyle = "#111";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#ddd";
+  ctx.font = "18px system-ui";
+  ctx.fillText("Unable to load visualization", 24, 60);
+  ctx.font = "14px system-ui";
 
-  const PADDING = 12;
-  const LABEL_HEIGHT = 20;
-  let yOffset = 0;
+  const lines = message.match(/.{1,70}(\s|$)/g) || [message];
+  lines.slice(0, 4).forEach((line, idx) => {
+    ctx.fillText(line.trim(), 24, 100 + idx * 24);
+  });
 
-  for (const { layer, cols, rows } of layouts) {
-    const pixelSize = Math.max(2, Math.min(12, Math.floor((canvasWidth - PADDING * 2) / cols)));
-    const blockW = cols * pixelSize;
-    const blockH = rows * pixelSize;
-    const xOffset = Math.floor((canvasWidth - blockW) / 2);
-
-    // Label
-    ctx.fillStyle = "#888";
-    ctx.font = "11px monospace";
-    ctx.fillText(`${layer.name} [${layer.shape.join("×")}]`, xOffset, yOffset + 12);
-    yOffset += LABEL_HEIGHT;
-
-    // Pixels
-    for (let i = 0; i < layer.weights.length; i++) {
-      const x = i % cols;
-      const y = Math.floor(i / cols);
-      const t = normalizeWeight(layer.weights[i], min, max);
-      const [r, g, b] = cmFn.fn(t);
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(xOffset + x * pixelSize, yOffset + y * pixelSize, pixelSize, pixelSize);
-    }
-
-    yOffset += blockH + PADDING;
-  }
-
-  return { totalHeight: yOffset, layouts };
+  currentLayout = null;
 }
 
-// ---------------------------------------------------------------------------
-// Main render loop
-// ---------------------------------------------------------------------------
+function applyCanvasScale() {
+  const canvas = document.getElementById("mosaic-canvas");
+  canvas.style.width = `${Math.round(canvas.width * state.zoom)}px`;
+  canvas.style.height = `${Math.round(canvas.height * state.zoom)}px`;
+}
 
-let currentLayout = null;
+function setStatus(message = "", type = "info") {
+  const status = document.getElementById("status-message");
+  status.textContent = message;
+  status.dataset.type = type;
+}
+
+function clearStatus() {
+  setStatus("", "info");
+}
+
+function clearInfoStatus() {
+  const status = document.getElementById("status-message");
+  if (!status.textContent || status.dataset.type === "info") {
+    clearStatus();
+  }
+}
 
 function render() {
   const canvas = document.getElementById("mosaic-canvas");
   const ctx = canvas.getContext("2d");
-  const model = state.model;
-  if (!model) return;
 
-  if (state.view === "mosaic") {
-    const layout = computeMosaicLayout(model);
-    const PIXEL_SIZE = Math.max(2, Math.min(8, Math.floor(600 / layout.cols)));
-    canvas.width = layout.cols * PIXEL_SIZE;
-    canvas.height = layout.rows * PIXEL_SIZE;
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    currentLayout = renderMosaic(ctx, model, state.palette, canvas.width, canvas.height);
-    currentLayout.pixelW = PIXEL_SIZE;
-    currentLayout.pixelH = PIXEL_SIZE;
-    currentLayout.mode = "mosaic";
-  } else {
-    const WIDTH = 600;
-    canvas.width = WIDTH;
-    // First pass: compute height
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = WIDTH;
-    tempCanvas.height = 10000;
-    const tempCtx = tempCanvas.getContext("2d");
-    const result = renderLayers(tempCtx, model, state.palette, WIDTH, state.selectedLayer);
-    canvas.height = Math.max(200, result.totalHeight || 400);
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    currentLayout = renderLayers(ctx, model, state.palette, WIDTH, state.selectedLayer);
-    currentLayout.mode = "layers";
-  }
-
-  updateInfoBar();
-}
-
-// ---------------------------------------------------------------------------
-// Hover inspection
-// ---------------------------------------------------------------------------
-
-function handleHover(e) {
-  if (!state.model || !currentLayout || currentLayout.mode !== "mosaic") {
-    updateTooltip(null);
+  if (!state.model) {
+    renderError("No model is currently loaded.");
     return;
   }
 
+  if (state.view === "mosaic") {
+    currentLayout = renderMosaic(ctx, state.model, state.palette);
+  } else {
+    currentLayout = renderLayers(ctx, state.model);
+  }
+
+  applyCanvasScale();
+  updateInfoBar();
+}
+
+function describeMosaicGroup(group) {
+  if (group.length === 1) {
+    const entry = group[0];
+    return `weight = ${entry.value.toFixed(6)}  |  ${entry.layerName}${formatTensorIndex(entry.index, entry.shape)}`;
+  }
+
+  return group
+    .map(
+      (entry, idx) =>
+        `${["R", "G", "B"][idx]}=${entry.value.toFixed(6)} @ ${entry.layerName}${formatTensorIndex(entry.index, entry.shape)}`
+    )
+    .join("  |  ");
+}
+
+function handleHover(event) {
   const canvas = document.getElementById("mosaic-canvas");
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
-  const cx = (e.clientX - rect.left) * scaleX;
-  const cy = (e.clientY - rect.top) * scaleY;
+  const cx = (event.clientX - rect.left) * scaleX;
+  const cy = (event.clientY - rect.top) * scaleY;
 
-  const col = Math.floor(cx / currentLayout.pixelW);
-  const row = Math.floor(cy / currentLayout.pixelH);
-  const idx = row * currentLayout.cols + col;
-
-  if (idx >= 0 && idx < currentLayout.total) {
-    const meta = currentLayout.weightMeta[idx];
-    const value = currentLayout.allWeights[idx];
-    updateTooltip({
-      value: value.toFixed(6),
-      layer: meta.layer,
-      index: meta.index,
-      position: `[${col}, ${row}]`,
-    });
-  } else {
+  if (!currentLayout) {
     updateTooltip(null);
-  }
-}
-
-function updateTooltip(info) {
-  const el = document.getElementById("tooltip");
-  if (!info) {
-    el.textContent = "Hover over a pixel to inspect its weight";
     return;
   }
-  el.textContent = `weight = ${info.value}  |  ${info.layer}[${info.index}]  |  pixel ${info.position}`;
+
+  if (currentLayout.mode === "mosaic") {
+    const col = Math.floor(cx / currentLayout.pixelSize);
+    const row = Math.floor(cy / currentLayout.pixelSize);
+    const pixelIndex = row * currentLayout.cols + col;
+
+    if (pixelIndex >= 0 && pixelIndex < currentLayout.pixelCount) {
+      const group = currentLayout.pixels[pixelIndex];
+      updateTooltip(`${describeMosaicGroup(group)}  |  pixel [${col}, ${row}]`);
+      return;
+    }
+  } else {
+    for (const block of currentLayout.blocks) {
+      if (
+        cx >= block.x &&
+        cx < block.x + block.width &&
+        cy >= block.y &&
+        cy < block.y + block.height
+      ) {
+        const localX = Math.floor((cx - block.x) / block.pixelSize);
+        const localY = Math.floor((cy - block.y) / block.pixelSize);
+        const key = `${localX},${localY}`;
+        const weightIndex = block.lookup.get(key);
+
+        if (weightIndex !== undefined) {
+          const value = block.layer.weights[weightIndex];
+          updateTooltip(
+            `weight = ${value.toFixed(6)}  |  ${block.layer.name}${formatTensorIndex(weightIndex, block.layer.shape)}`
+          );
+          return;
+        }
+      }
+    }
+  }
+
+  updateTooltip(null);
 }
 
-// ---------------------------------------------------------------------------
-// UI updates
-// ---------------------------------------------------------------------------
+function updateTooltip(message) {
+  const tooltip = document.getElementById("tooltip");
+  tooltip.textContent = message || "Hover over a pixel to inspect its weight";
+}
 
 function updateInfoBar() {
-  const el = document.getElementById("info-bar");
-  if (!state.model) return;
-  const m = state.model.model;
-  const gridSide = Math.ceil(Math.sqrt(m.total_params));
-  el.textContent = `${m.name} · ${m.total_params.toLocaleString()} weights · ${gridSide}×${Math.ceil(m.total_params / gridSide)} grid`;
+  const info = document.getElementById("info-bar");
+  if (!state.model || !currentLayout) {
+    info.textContent = "";
+    return;
+  }
+
+  const modelMeta = state.model.model;
+  const parts = [
+    modelMeta.name,
+    `${modelMeta.total_params.toLocaleString()} weights`,
+    `${NORMALIZATION_LABELS[state.normalization]} normalization`,
+    `${Math.round(state.zoom * 100)}% zoom`,
+  ];
+
+  if (currentLayout.mode === "mosaic") {
+    if (state.palette === "aipixel") {
+      parts.push(`${currentLayout.pixelCount.toLocaleString()} RGB pixels`);
+    }
+    parts.push(`${currentLayout.cols}×${currentLayout.rows} grid`);
+  } else {
+    parts.push(`${currentLayout.blocks.length} layer panel${currentLayout.blocks.length === 1 ? "" : "s"}`);
+  }
+
+  info.textContent = parts.join(" · ");
 }
 
 function updatePlacard() {
-  const placard = PLACARDS[state.modelId];
-  const el = document.getElementById("placard");
-  if (!placard) {
-    el.style.display = "none";
+  const placard = document.getElementById("placard");
+  if (!state.model) {
+    placard.style.display = "none";
     return;
   }
-  el.style.display = "block";
-  document.getElementById("placard-title").textContent = placard.title;
-  document.getElementById("placard-subtitle").textContent = placard.subtitle;
-  document.getElementById("placard-text").textContent = placard.text;
-}
 
-function updateLayerList() {
-  const el = document.getElementById("layer-list");
-  el.innerHTML = "";
-  if (!state.model) return;
-
-  const allBtn = document.createElement("button");
-  allBtn.textContent = "All layers";
-  allBtn.className = state.selectedLayer === null ? "active" : "";
-  allBtn.onclick = () => {
-    state.selectedLayer = null;
-    updateLayerList();
-    render();
-  };
-  el.appendChild(allBtn);
-
-  for (const layer of state.model.layers) {
-    const btn = document.createElement("button");
-    const count = layer.weights.length;
-    btn.textContent = `${layer.name} (${count})`;
-    btn.className = state.selectedLayer === layer.name ? "active" : "";
-    btn.onclick = () => {
-      state.selectedLayer = layer.name;
-      state.view = "layers";
-      document.getElementById("view-select").value = "layers";
-      updateLayerList();
-      render();
-      // Show layer annotation if available
-      showLayerAnnotation(layer.name);
-    };
-    el.appendChild(btn);
+  const content = state.content[state.modelId];
+  if (!content) {
+    placard.style.display = "none";
+    return;
   }
+
+  const modelMeta = state.model.model;
+  placard.style.display = "block";
+  document.getElementById("placard-title").textContent =
+    modelMeta.title || modelMeta.name;
+  document.getElementById("placard-subtitle").textContent =
+    `${modelMeta.name}, ${modelMeta.total_params.toLocaleString()} weights, ${modelMeta.year}`;
+  document.getElementById("placard-text").textContent = content.placardText;
 }
 
 function showLayerAnnotation(layerName) {
-  const placard = PLACARDS[state.modelId];
-  const annotEl = document.getElementById("layer-annotation");
-  if (placard && placard.layerAnnotations && placard.layerAnnotations[layerName]) {
-    annotEl.textContent = placard.layerAnnotations[layerName];
-    annotEl.style.display = "block";
-  } else {
-    annotEl.style.display = "none";
+  const annotationEl = document.getElementById("layer-annotation");
+  if (!layerName) {
+    annotationEl.style.display = "none";
+    annotationEl.textContent = "";
+    return;
   }
+
+  const annotation = state.content[state.modelId]?.layerAnnotations?.[layerName];
+  if (!annotation) {
+    annotationEl.style.display = "none";
+    annotationEl.textContent = "";
+    return;
+  }
+
+  annotationEl.textContent = annotation;
+  annotationEl.style.display = "block";
 }
 
-// ---------------------------------------------------------------------------
-// Export
-// ---------------------------------------------------------------------------
+function updateLayerList() {
+  const layerList = document.getElementById("layer-list");
+  layerList.innerHTML = "";
+
+  if (!state.model) return;
+
+  const allButton = document.createElement("button");
+  allButton.textContent = "All layers";
+  allButton.className = state.selectedLayer === null ? "active" : "";
+  allButton.onclick = () => {
+    state.selectedLayer = null;
+    updateLayerList();
+    showLayerAnnotation(null);
+    render();
+  };
+  layerList.appendChild(allButton);
+
+  for (const layer of state.model.layers) {
+    const button = document.createElement("button");
+    button.textContent = `${layer.name} (${layer.weights.length})`;
+    button.className = state.selectedLayer === layer.name ? "active" : "";
+    button.onclick = () => {
+      state.selectedLayer = layer.name;
+      state.view = "layers";
+      document.getElementById("view-select").value = "layers";
+      if (state.palette === "aipixel") {
+        state.palette = "inferno";
+        document.getElementById("palette-select").value = "inferno";
+        setStatus("ai-pixel palette works only in Mosaic view, so the palette was reset to Inferno.", "warning");
+      }
+      updateLayerList();
+      showLayerAnnotation(layer.name);
+      render();
+    };
+    layerList.appendChild(button);
+  }
+}
 
 function exportPNG() {
   const canvas = document.getElementById("mosaic-canvas");
   canvas.toBlob((blob) => {
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `model-mosaic-${state.modelId}-${state.palette}.png`;
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `model-mosaic-${state.modelId}-${state.palette}.png`;
+    link.click();
     URL.revokeObjectURL(url);
   });
 }
 
-// ---------------------------------------------------------------------------
-// Model loading
-// ---------------------------------------------------------------------------
+async function loadContent() {
+  try {
+    const response = await fetch("models/content.json");
+    if (!response.ok) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
+    state.content = await response.json();
+  } catch (error) {
+    state.content = {};
+    setStatus(`Commentary failed to load: ${error.message}`, "warning");
+  }
+}
 
 async function loadModel(modelId) {
   const info = MODELS[modelId];
   if (!info) return;
 
-  state.modelId = modelId;
-  state.selectedLayer = null;
+  setStatus(`Loading ${info.label}...`, "info");
 
-  const resp = await fetch(info.file);
-  state.model = await resp.json();
+  try {
+    const response = await fetch(info.file);
+    if (!response.ok) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
 
-  updateLayerList();
-  updatePlacard();
-  document.getElementById("layer-annotation").style.display = "none";
-  render();
+    const model = await response.json();
+    state.model = model;
+    state.modelId = modelId;
+    state.selectedLayer = null;
+    document.getElementById("model-select").value = modelId;
+    updateLayerList();
+    updatePlacard();
+    showLayerAnnotation(null);
+    render();
+    clearInfoStatus();
+  } catch (error) {
+    if (!state.model) {
+      renderError(error.message);
+    } else {
+      document.getElementById("model-select").value = state.modelId;
+    }
+    setStatus(`Failed to load ${info.label}: ${error.message}`, "error");
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
+function handleZoom(event) {
+  event.preventDefault();
 
-function init() {
-  // Populate model selector
+  const wrapper = document.getElementById("canvas-wrapper");
+  const canvas = document.getElementById("mosaic-canvas");
+  const oldZoom = state.zoom;
+  const step = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newZoom = clamp(oldZoom * step, state.minZoom, state.maxZoom);
+
+  if (newZoom === oldZoom) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const pointerX = event.clientX - rect.left;
+  const pointerY = event.clientY - rect.top;
+  const contentX = wrapper.scrollLeft + pointerX;
+  const contentY = wrapper.scrollTop + pointerY;
+  const scale = newZoom / oldZoom;
+
+  state.zoom = newZoom;
+  applyCanvasScale();
+
+  wrapper.scrollLeft = contentX * scale - pointerX;
+  wrapper.scrollTop = contentY * scale - pointerY;
+  updateInfoBar();
+
+  if (canvas.width * state.zoom > wrapper.clientWidth || canvas.height * state.zoom > wrapper.clientHeight) {
+    setStatus("Scroll to zoom. Drag the canvas to pan.", "info");
+  }
+}
+
+function startPan(event) {
+  if (event.button !== 0) return;
+  const wrapper = document.getElementById("canvas-wrapper");
+  state.isDragging = true;
+  state.dragStartX = event.clientX;
+  state.dragStartY = event.clientY;
+  state.dragScrollLeft = wrapper.scrollLeft;
+  state.dragScrollTop = wrapper.scrollTop;
+  wrapper.classList.add("dragging");
+  event.preventDefault();
+}
+
+function onPan(event) {
+  if (!state.isDragging) return;
+  const wrapper = document.getElementById("canvas-wrapper");
+  wrapper.scrollLeft = state.dragScrollLeft - (event.clientX - state.dragStartX);
+  wrapper.scrollTop = state.dragScrollTop - (event.clientY - state.dragStartY);
+}
+
+function endPan() {
+  if (!state.isDragging) return;
+  state.isDragging = false;
+  document.getElementById("canvas-wrapper").classList.remove("dragging");
+}
+
+async function init() {
   const modelSelect = document.getElementById("model-select");
   for (const [id, info] of Object.entries(MODELS)) {
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = info.label;
-    modelSelect.appendChild(opt);
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = info.label;
+    modelSelect.appendChild(option);
   }
   modelSelect.value = state.modelId;
-  modelSelect.addEventListener("change", (e) => loadModel(e.target.value));
+  modelSelect.addEventListener("change", (event) => loadModel(event.target.value));
 
-  // Palette selector
   const paletteSelect = document.getElementById("palette-select");
-  for (const [id, cm] of Object.entries(COLORMAPS)) {
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = cm.name;
-    paletteSelect.appendChild(opt);
+  for (const [id, colormap] of Object.entries(COLORMAPS)) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = colormap.name;
+    paletteSelect.appendChild(option);
   }
   paletteSelect.value = state.palette;
-  paletteSelect.addEventListener("change", (e) => {
-    state.palette = e.target.value;
+  paletteSelect.addEventListener("change", (event) => {
+    state.palette = event.target.value;
+    if (state.view === "layers" && state.palette === "aipixel") {
+      state.view = "mosaic";
+      document.getElementById("view-select").value = "mosaic";
+      setStatus("ai-pixel palette works only in Mosaic view, so the view was switched to Mosaic.", "warning");
+    }
     render();
   });
 
-  // View selector
+  const normalizationSelect = document.getElementById("normalization-select");
+  normalizationSelect.addEventListener("change", (event) => {
+    state.normalization = event.target.value;
+    render();
+  });
+
   const viewSelect = document.getElementById("view-select");
-  viewSelect.addEventListener("change", (e) => {
-    state.view = e.target.value;
-    document.getElementById("layer-annotation").style.display = "none";
+  viewSelect.addEventListener("change", (event) => {
+    state.view = event.target.value;
+    if (state.view === "layers" && state.palette === "aipixel") {
+      state.palette = "inferno";
+      document.getElementById("palette-select").value = "inferno";
+      setStatus("ai-pixel palette works only in Mosaic view, so the palette was reset to Inferno.", "warning");
+    } else {
+      clearStatus();
+    }
+    if (state.view !== "layers") {
+      showLayerAnnotation(null);
+    } else if (state.selectedLayer) {
+      showLayerAnnotation(state.selectedLayer);
+    }
     render();
   });
 
-  // Export button
   document.getElementById("export-btn").addEventListener("click", exportPNG);
 
-  // Placard toggle
   document.getElementById("placard-toggle").addEventListener("click", () => {
     const body = document.getElementById("placard-body");
-    const btn = document.getElementById("placard-toggle");
+    const button = document.getElementById("placard-toggle");
     if (body.style.display === "none") {
       body.style.display = "block";
-      btn.textContent = "▾ Hide commentary";
+      button.textContent = "▾ Hide commentary";
     } else {
       body.style.display = "none";
-      btn.textContent = "▸ Show commentary";
+      button.textContent = "▸ Show commentary";
     }
   });
 
-  // Canvas hover
+  const wrapper = document.getElementById("canvas-wrapper");
   const canvas = document.getElementById("mosaic-canvas");
+  wrapper.addEventListener("wheel", handleZoom, { passive: false });
+  wrapper.addEventListener("mousedown", startPan);
+  window.addEventListener("mousemove", onPan);
+  window.addEventListener("mouseup", endPan);
   canvas.addEventListener("mousemove", handleHover);
   canvas.addEventListener("mouseleave", () => updateTooltip(null));
 
-  // Load default model
-  loadModel(state.modelId);
+  await loadContent();
+  await loadModel(state.modelId);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  init().catch((error) => {
+    renderError(error.message);
+    setStatus(`Initialization failed: ${error.message}`, "error");
+  });
+});

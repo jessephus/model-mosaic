@@ -2,7 +2,7 @@
 Train small PyTorch models and export their weights as JSON.
 
 Models:
-  - Iris MLP (4→8→3): 59 parameters
+  - Iris MLP (4→8→3): 67 parameters
   - CIFAR-10 Tiny CNN: ~15K parameters
 
 Usage:
@@ -13,6 +13,7 @@ Usage:
 import argparse
 import json
 import os
+import random
 
 import numpy as np
 import torch
@@ -24,8 +25,26 @@ import torch.optim as optim
 # Model definitions
 # ---------------------------------------------------------------------------
 
+
+def set_seed(seed: int) -> None:
+    """Make training runs reproducible."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+    try:
+        torch.use_deterministic_algorithms(True)
+    except Exception:
+        pass
+
+    if hasattr(torch.backends, "cudnn"):
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
 class IrisMLP(nn.Module):
-    """Tiny MLP for Iris classification: 4→8→3 = 59 parameters."""
+    """Tiny MLP for Iris classification: 4→8→3 = 67 parameters."""
 
     def __init__(self):
         super().__init__()
@@ -66,11 +85,13 @@ class CIFAR10TinyCNN(nn.Module):
 # Training
 # ---------------------------------------------------------------------------
 
-def train_iris(epochs=500):
+def train_iris(epochs=500, seed=42):
     """Train Iris MLP on the classic Iris dataset."""
     from sklearn.datasets import load_iris
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
+
+    set_seed(seed)
 
     data = load_iris()
     X = data.data.astype(np.float32)
@@ -79,7 +100,12 @@ def train_iris(epochs=500):
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=seed,
+    )
 
     model = IrisMLP()
     criterion = nn.CrossEntropyLoss()
@@ -104,86 +130,90 @@ def train_iris(epochs=500):
         accuracy = (preds == y_test_t).float().mean().item()
         print(f"Iris MLP — Test accuracy: {accuracy:.1%}")
 
-    return model
+    return model, accuracy
 
 
-def train_cifar10(epochs=20):
-    """Train CIFAR-10 Tiny CNN.
-
-    Attempts to download CIFAR-10; falls back to synthetic data if download fails
-    (e.g., SSL certificate issues). The visualization shows real weight structure
-    either way — gradient descent produces meaningful patterns on any data.
-    """
-    import ssl
-
+def train_cifar10(epochs=20, data_root="./models/data", seed=42):
+    """Train CIFAR-10 Tiny CNN on the real CIFAR-10 dataset."""
+    set_seed(seed)
+    os.makedirs(data_root, exist_ok=True)
     model = CIFAR10TinyCNN()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
+    from torchvision import datasets, transforms
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+
+    cifar_dir = os.path.join(data_root, "cifar-10-batches-py")
+    download = not os.path.exists(cifar_dir)
+    if download:
+        print("Downloading CIFAR-10 dataset...")
+    else:
+        print(f"Using local CIFAR-10 dataset in {data_root}")
 
     try:
-        # Try with SSL workaround first
-        ssl._create_default_https_context = ssl._create_unverified_context
-        from torchvision import datasets, transforms
-
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        ])
-
-        print("Downloading CIFAR-10 dataset...")
-        trainset = datasets.CIFAR10(root="./models/data", train=True, download=True, transform=transform)
-        testset = datasets.CIFAR10(root="./models/data", train=False, download=True, transform=transform)
-
-        trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
-        testloader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=False)
-
-        for epoch in range(epochs):
-            model.train()
-            running_loss = 0.0
-            for i, (inputs, labels) in enumerate(trainloader):
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                running_loss += loss.item()
-            print(f"  Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(trainloader):.4f}")
-
-        model.eval()
-        correct, total = 0, 0
-        with torch.no_grad():
-            for inputs, labels in testloader:
-                outputs = model(inputs)
-                _, predicted = outputs.max(1)
-                total += labels.size(0)
-                correct += predicted.eq(labels).sum().item()
-        print(f"CIFAR-10 Tiny CNN — Test accuracy: {correct/total:.1%}")
-
+        trainset = datasets.CIFAR10(
+            root=data_root,
+            train=True,
+            download=download,
+            transform=transform,
+        )
+        testset = datasets.CIFAR10(
+            root=data_root,
+            train=False,
+            download=download,
+            transform=transform,
+        )
     except Exception as e:
-        print(f"CIFAR-10 download failed ({e.__class__.__name__}), training on synthetic data...")
-        # Synthetic data still produces real gradient-descent weight patterns
-        n_samples = 5000
-        X_train = torch.randn(n_samples, 3, 32, 32)
-        y_train = torch.randint(0, 10, (n_samples,))
+        raise RuntimeError(
+            "Failed to access the real CIFAR-10 dataset. "
+            f"Original error: {e}. "
+            f"Try running Python's Install Certificates.command on macOS, or manually "
+            f"download/extract CIFAR-10 into {data_root} so torchvision can load it."
+        ) from e
 
-        dataset = torch.utils.data.TensorDataset(X_train, y_train)
-        trainloader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=True)
+    generator = torch.Generator().manual_seed(seed)
+    trainloader = torch.utils.data.DataLoader(
+        trainset,
+        batch_size=64,
+        shuffle=True,
+        generator=generator,
+        num_workers=0,
+    )
+    testloader = torch.utils.data.DataLoader(
+        testset,
+        batch_size=64,
+        shuffle=False,
+        num_workers=0,
+    )
 
-        for epoch in range(epochs):
-            model.train()
-            running_loss = 0.0
-            for inputs, labels in trainloader:
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                running_loss += loss.item()
-            print(f"  Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(trainloader):.4f}")
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for inputs, labels in trainloader:
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        print(f"  Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(trainloader):.4f}")
 
-        print(f"CIFAR-10 Tiny CNN — Trained on synthetic data (weight patterns are real)")
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for inputs, labels in testloader:
+            outputs = model(inputs)
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+    accuracy = correct / total
+    print(f"CIFAR-10 Tiny CNN — Test accuracy: {accuracy:.1%}")
 
-    return model
+    return model, accuracy
 
 
 # ---------------------------------------------------------------------------
@@ -263,14 +293,20 @@ def main():
     parser.add_argument("--model", required=True, choices=["iris", "cifar10"], help="Model to train")
     parser.add_argument("--output", required=True, help="Output JSON path")
     parser.add_argument("--epochs", type=int, default=None, help="Training epochs")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible training")
+    parser.add_argument("--data-root", default="./models/data", help="Directory to cache CIFAR-10 data")
     args = parser.parse_args()
 
     if args.model == "iris":
         print("Training Iris MLP...")
-        model = train_iris(epochs=args.epochs or 500)
+        model, accuracy = train_iris(epochs=args.epochs or 500, seed=args.seed)
     elif args.model == "cifar10":
         print("Training CIFAR-10 Tiny CNN...")
-        model = train_cifar10(epochs=args.epochs or 20)
+        model, accuracy = train_cifar10(
+            epochs=args.epochs or 20,
+            data_root=args.data_root,
+            seed=args.seed,
+        )
 
     print(f"Extracting weights...")
     layers = extract_weights(model, args.model)
@@ -278,6 +314,8 @@ def main():
     total_params = sum(len(layer["weights"]) for layer in layers)
     meta = MODEL_META[args.model].copy()
     meta["total_params"] = total_params
+    meta["accuracy"] = round(float(accuracy), 6)
+    meta["seed"] = args.seed
 
     output = {
         "model": meta,
@@ -288,9 +326,10 @@ def main():
     with open(args.output, "w") as f:
         json.dump(output, f)
 
-    grid_side = int(np.ceil(np.sqrt(total_params)))
+    cols = int(np.ceil(np.sqrt(total_params)))
+    rows = int(np.ceil(total_params / cols))
     print(f"Extracted {total_params} weights across {len(layers)} layers")
-    print(f"Grid size: ~{grid_side}×{grid_side}")
+    print(f"Grid size: {cols}×{rows}")
     print(f"Saved to {args.output}")
 
     for layer in layers:

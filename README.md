@@ -12,9 +12,9 @@ Browse three pre-loaded "gallery pieces," each accompanied by curatorial comment
 
 | Piece | Model | Weights | Grid |
 |---|---|---|---|
-| 🎨 *The Micro-Sprite* | Iris MLP (4→8→3) | 59 | 8×8 |
-| 🖼️ *The Portrait* | MNIST-8 CNN | ~6,500 | ~81×81 |
-| 🏔️ *The Landscape* | CIFAR-10 Tiny CNN | ~15,000 | ~122×122 |
+| 🎨 *The Micro-Sprite* | Iris MLP (4→8→3) | 67 | 9×8 |
+| 🖼️ *The Portrait* | MNIST-8 CNN | 5,994 | 78×77 |
+| 🏔️ *The Landscape* | CIFAR-10 Tiny CNN | 14,410 | 121×120 |
 
 ## How It Works
 
@@ -28,7 +28,8 @@ Each weight (a floating-point number the model learned during training) is mappe
 ## Features
 
 - **Two view modes:** Mosaic (all weights in one grid) and Layer (per-layer panels)
-- **7 palettes:** Inferno, Coolwarm, Grayscale, NES, PICO-8, Game Boy, ai-pixel RGB
+- **7 palettes:** Inferno, Coolwarm, Grayscale, NES, PICO-8, Game Boy, ai-pixel RGB (mosaic-only)
+- **3 normalization modes:** Clipped, Global, and Per-layer
 - **Interactive:** Hover to inspect individual weights, scroll to zoom, drag to pan
 - **Gallery placards:** Art-historian-meets-ML-researcher commentary per model
 - **Export:** Download any visualization as a PNG

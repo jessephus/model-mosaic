@@ -139,9 +139,10 @@ def main():
         json.dump(output, f)
 
     total = output["model"]["total_params"]
-    grid_side = int(np.ceil(np.sqrt(total)))
+    cols = int(np.ceil(np.sqrt(total)))
+    rows = int(np.ceil(total / cols))
     print(f"Extracted {total} weights across {len(layers)} layers")
-    print(f"Grid size: ~{grid_side}×{grid_side}")
+    print(f"Grid size: {cols}×{rows}")
     print(f"Saved to {args.output}")
 
     for layer in layers:

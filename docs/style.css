@@ -116,13 +116,23 @@ main {
   border-radius: 4px;
   padding: 8px;
   display: inline-block;
+  overflow: auto;
+  max-width: min(78vw, 720px);
+  max-height: 75vh;
+  cursor: grab;
+  user-select: none;
+  overscroll-behavior: contain;
+}
+
+.canvas-wrapper.dragging {
+  cursor: grabbing;
 }
 
 #mosaic-canvas {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  max-width: 100%;
+  max-width: none;
   height: auto;
 }
 
@@ -133,6 +143,22 @@ main {
   color: #888;
   min-height: 1.2em;
   text-align: center;
+}
+
+.status-message {
+  margin-top: 0.35rem;
+  min-height: 1.2em;
+  font-size: 0.8rem;
+  color: #7e7e7e;
+  text-align: center;
+}
+
+.status-message[data-type="warning"] {
+  color: #d4b26a;
+}
+
+.status-message[data-type="error"] {
+  color: #e28585;
 }
 
 /* --- Layer panel --- */
@@ -300,5 +326,9 @@ footer {
   .placard {
     margin: 0 1rem 2rem;
     padding: 1rem;
+  }
+
+  .canvas-wrapper {
+    max-width: calc(100vw - 2rem);
   }
 }

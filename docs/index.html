@@ -32,16 +32,25 @@
       <select id="palette-select"></select>
     </div>
     <div class="toolbar-group">
+      <label for="normalization-select">Normalization</label>
+      <select id="normalization-select">
+        <option value="clipped" selected>Clipped</option>
+        <option value="global">Global</option>
+        <option value="per-layer">Per-layer</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
       <button id="export-btn" title="Download as PNG">⬇ Export PNG</button>
     </div>
   </nav>
 
   <main>
     <div class="canvas-area">
-      <div class="canvas-wrapper">
+      <div id="canvas-wrapper" class="canvas-wrapper">
         <canvas id="mosaic-canvas"></canvas>
       </div>
       <div id="tooltip" class="tooltip">Hover over a pixel to inspect its weight</div>
+      <div id="status-message" class="status-message" aria-live="polite"></div>
     </div>
 
     <aside class="layer-panel">

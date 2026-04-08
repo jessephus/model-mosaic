@@ -1,0 +1,37 @@
+{
+  "iris-mlp": {
+    "placardText": "At just 67 weights arranged in a 9×8 grid, The Micro-Sprite is a study in minimalism — a haiku written in gradient descent. The composition is intimate: two compact blocks of color separated by thin bias bands, like a diptych in a reliquary. The upper register (the hidden layer) shows eight small columns of four weights each, their values splayed across the colormap in broad, confident strokes. No two columns are alike — each has learned a different \"question\" to ask of an iris flower's measurements.\n\nThe lower register is even sparser: three rows of eight, the output layer's final vote on species identity. Here the colors are more polarized — the model has made up its mind. Warm tones pull toward one class, cool tones push away. The bias neurons appear as single bright pixels punctuating each block, tiny but decisive, like the period at the end of a sentence.\n\nWhat is remarkable about The Micro-Sprite is not its beauty but its sufficiency. These 67 numbers, each discovered through hundreds of passes over 150 flower measurements, are enough to classify iris species with near-perfect accuracy. The image is a reminder that intelligence — at least the narrow, botanical kind — can be very small indeed.",
+    "layerAnnotations": {
+      "fc1.weight": "Eight learned questions about petal and sepal geometry — each column a different way of seeing a flower.",
+      "fc1.bias": "Threshold offsets — how much evidence each hidden neuron needs before it activates.",
+      "fc2.weight": "The final vote: three rows mapping eight features to three species. Warm means yes; cool means no.",
+      "fc2.bias": "Decision thresholds for each species prediction."
+    }
+  },
+  "mnist-8": {
+    "placardText": "At first glance, a field of muted earth tones — ochre, umber, and charcoal — disrupted by scattered flares of vermillion and cobalt. The composition reads as abstract expressionism at the macro level, but zoom in and structure emerges: repeating 5×5 motifs in the upper registers where the convolutional filters live, giving way to the dense, grainy texture of the fully-connected layer below. The effect is not unlike looking at a woven textile from across a room, then pressing your face to the fabric to discover its thread structure.\n\nThese patterns are not decorative. The bright diagonal striations in the first convolutional block are edge detectors — the model has independently discovered that handwriting is built from oriented strokes, the same insight that drove David Marr's computational theory of vision in the 1980s. The second convolutional block, more complex and less legible, combines those edges into curves and junctions. By the time we reach the dense layer at the bottom — a wide, noisy band of near-zero values punctuated by sharp peaks — the model has abstracted away all spatial structure and is thinking purely in terms of digit-ness.\n\nWhat is remarkable is that no one designed these patterns. They are the residue of gradient descent: hundreds of epochs of a loss function pulling 5,994 numbers toward an arrangement that correctly classifies 98.9% of handwritten digits. The image you see is an optimization landscape frozen at its minimum — a mathematical fossil, beautiful in the way that a crystal is beautiful, not by intention but by the relentless pressure of structure seeking its lowest energy state.",
+    "layerAnnotations": {
+      "Parameter5": "Eight 5×5 convolutional kernels — the model's first attempt to see. Each filter has learned to detect a different oriented edge or gradient.",
+      "Parameter6": "Bias values for the first conv layer — subtle threshold adjustments.",
+      "Parameter87": "Sixteen 5×5 filters operating on eight input channels — 3,200 weights that combine simple edges into curves, corners, and junctions.",
+      "Parameter88": "Bias values for the second conv layer.",
+      "Parameter193": "The dense classification layer — 2,560 weights mapping spatial features into digit identity. The texture here is noise-like because spatial structure has been abstracted away.",
+      "Parameter194": "Output bias — ten values, one per digit, encoding the model's prior expectation for each class."
+    }
+  },
+  "cifar10-tiny": {
+    "placardText": "The Landscape is the largest piece in the gallery, and the most visually complex. At 121×120 pixels, it rewards patience — what initially appears as television static resolves, on closer inspection, into layered geological strata. The three convolutional blocks form distinct horizontal bands of increasing density, like sedimentary rock viewed in cross-section, each layer deposited by a different epoch of learning.\n\nThe first stratum is the thinnest and most colorful: eight tiny 3×3 filters operating on three color channels. These are the model's retinas — simple color-edge detectors that respond to red-green boundaries, brightness gradients, and blue-sky-against-brown-ground transitions. They are the only layer that sees color directly, and their vivid hues reflect this intimacy with the raw pixel data of photographs.\n\nBelow lies the second stratum: sixteen filters reading from eight channels, 1,152 weights of increasing subtlety. And below that, the deepest convolutional layer — 4,608 weights in thirty-two filters, their patterns now too abstract for the human eye to decode. These neurons are thinking about wings, wheels, and whiskers — the parts of objects that distinguish an airplane from an automobile.\n\nThe dense layer at the base — 8,192 weights — is a vast, stippled plain. This is where spatial reasoning gives way to categorical judgment. The model has compressed a 32×32 color photograph into sixteen abstract features, and from those sixteen numbers, it will guess whether it's looking at a ship or a horse. The weight painting of this layer has the quality of a Seurat pointillist canvas: meaningless up close, meaningful at a distance, each dot placed not by artistic intention but by the mathematics of backpropagation.",
+    "layerAnnotations": {
+      "conv1.weight": "Eight 3×3 color filters — the model's retinas. Each kernel learns to detect a different color-edge combination in the raw photograph.",
+      "conv1.bias": "Bias for the first conv layer.",
+      "conv2.weight": "Sixteen filters combining first-layer edges into textures and corners — 1,152 weights of increasing visual abstraction.",
+      "conv2.bias": "Bias for the second conv layer.",
+      "conv3.weight": "Thirty-two deep filters — 4,608 weights encoding parts of objects: curves of wings, straight edges of buildings, fur textures of animals.",
+      "conv3.bias": "Bias for the third conv layer.",
+      "fc1.weight": "The dense mapping — 8,192 weights compressing spatial features into 16 abstract category signals. A pointillist canvas of learned associations.",
+      "fc1.bias": "Bias for the dense layer.",
+      "fc2.weight": "The final classifier — 160 weights casting ten votes, one per object category.",
+      "fc2.bias": "Output bias — prior expectations for each of the ten CIFAR-10 categories."
+    }
+  }
+}

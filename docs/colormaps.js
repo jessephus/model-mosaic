@@ -162,5 +162,5 @@ for (const key of Object.keys(COLORMAPS)) {
  */
 function normalizeWeight(value, min, max) {
   if (max === min) return 0.5;
-  return (value - min) / (max - min);
+  return Math.max(0, Math.min(1, (value - min) / (max - min)));
 }

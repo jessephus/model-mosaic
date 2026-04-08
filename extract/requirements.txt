@@ -1,5 +1,6 @@
 onnx
 numpy
 huggingface_hub
+scikit-learn
 torch
 torchvision
