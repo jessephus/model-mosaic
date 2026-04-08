@@ -50,20 +50,18 @@ What is remarkable about The Micro-Sprite is not its beauty but its sufficiency.
   },
   "mnist-8": {
     title: "The Portrait",
-    subtitle: "MNIST-8 Convolutional Neural Network, 5,998 weights, 2019",
+    subtitle: "MNIST-8 Convolutional Neural Network, 5,994 weights, 2019",
     text: `At first glance, a field of muted earth tones — ochre, umber, and charcoal — disrupted by scattered flares of vermillion and cobalt. The composition reads as abstract expressionism at the macro level, but zoom in and structure emerges: repeating 5×5 motifs in the upper registers where the convolutional filters live, giving way to the dense, grainy texture of the fully-connected layer below. The effect is not unlike looking at a woven textile from across a room, then pressing your face to the fabric to discover its thread structure.
 
 These patterns are not decorative. The bright diagonal striations in the first convolutional block are edge detectors — the model has independently discovered that handwriting is built from oriented strokes, the same insight that drove David Marr's computational theory of vision in the 1980s. The second convolutional block, more complex and less legible, combines those edges into curves and junctions. By the time we reach the dense layer at the bottom — a wide, noisy band of near-zero values punctuated by sharp peaks — the model has abstracted away all spatial structure and is thinking purely in terms of "digit-ness."
 
-What is remarkable is that no one designed these patterns. They are the residue of gradient descent: hundreds of epochs of a loss function pulling 5,998 numbers toward an arrangement that correctly classifies 98.9% of handwritten digits. The image you see is an optimization landscape frozen at its minimum — a mathematical fossil, beautiful in the way that a crystal is beautiful, not by intention but by the relentless pressure of structure seeking its lowest energy state.`,
+What is remarkable is that no one designed these patterns. They are the residue of gradient descent: hundreds of epochs of a loss function pulling 5,994 numbers toward an arrangement that correctly classifies 98.9% of handwritten digits. The image you see is an optimization landscape frozen at its minimum — a mathematical fossil, beautiful in the way that a crystal is beautiful, not by intention but by the relentless pressure of structure seeking its lowest energy state.`,
     layerAnnotations: {
       "Parameter5": "Eight 5×5 convolutional kernels — the model's first attempt to see. Each filter has learned to detect a different oriented edge or gradient, recapitulating decades of computer vision research in a few hundred training steps.",
       "Parameter6": "Bias values for the first conv layer — subtle threshold adjustments.",
       "Parameter87": "Sixteen 5×5 filters operating on eight input channels — 3,200 weights that combine simple edges into curves, corners, and junctions. The visual complexity increases dramatically.",
       "Parameter88": "Bias values for the second conv layer.",
-      "Pooling160_Output_0_reshape0_shape": "Reshape parameters — structural metadata, not learned features.",
       "Parameter193": "The dense classification layer — 2,560 weights that map spatial features into digit identity. The texture here is noise-like because spatial structure has been abstracted away; only statistical signatures of each digit class remain.",
-      "Parameter193_reshape1_shape": "Reshape parameters.",
       "Parameter194": "Output bias — ten values, one per digit, encoding the model's prior expectation for each class.",
     },
   },

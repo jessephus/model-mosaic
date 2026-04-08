@@ -54,13 +54,28 @@ def download_model(repo_id: str, cache_dir: str = "models") -> str:
     sys.exit(1)
 
 
+def is_learnable_tensor(name: str, tensor: np.ndarray) -> bool:
+    """Filter out non-weight tensors (reshape metadata, constant shapes, etc.)."""
+    # Reshape/shape tensors are typically int64 with very few elements
+    if tensor.dtype in (np.int64, np.int32) and tensor.size <= 4:
+        return False
+    # Tensors named with "shape" or "reshape" are structural metadata
+    if "shape" in name.lower() or "reshape" in name.lower():
+        return False
+    return True
+
+
 def extract_weights(model_path: str) -> list[dict]:
-    """Extract all weight tensors from an ONNX model."""
+    """Extract all learnable weight tensors from an ONNX model."""
     model = onnx.load(model_path)
     layers = []
 
     for initializer in model.graph.initializer:
         tensor = onnx.numpy_helper.to_array(initializer)
+
+        if not is_learnable_tensor(initializer.name, tensor):
+            continue
+
         weights = tensor.flatten().tolist()
 
         layers.append({
