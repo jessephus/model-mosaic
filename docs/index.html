@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Mosaic — Every pixel is a neural network weight</title>
+  <meta name="description" content="Visualize neural network weights as interactive pixel art. Each pixel is a real weight learned by gradient descent.">
+  <meta property="og:title" content="Model Mosaic">
+  <meta property="og:description" content="Every pixel is a neural network weight.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>MODEL MOSAIC</h1>
+    <p class="tagline">Every pixel is a neural network weight.</p>
+  </header>
+
+  <nav class="toolbar">
+    <div class="toolbar-group">
+      <label for="model-select">Model</label>
+      <select id="model-select"></select>
+    </div>
+    <div class="toolbar-group">
+      <label for="view-select">View</label>
+      <select id="view-select">
+        <option value="mosaic">Mosaic</option>
+        <option value="layers">Layers</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <label for="palette-select">Palette</label>
+      <select id="palette-select"></select>
+    </div>
+    <div class="toolbar-group">
+      <button id="export-btn" title="Download as PNG">⬇ Export PNG</button>
+    </div>
+  </nav>
+
+  <main>
+    <div class="canvas-area">
+      <div class="canvas-wrapper">
+        <canvas id="mosaic-canvas"></canvas>
+      </div>
+      <div id="tooltip" class="tooltip">Hover over a pixel to inspect its weight</div>
+    </div>
+
+    <aside class="layer-panel">
+      <h3>Layers</h3>
+      <div id="layer-list"></div>
+      <div id="layer-annotation" class="layer-annotation" style="display:none;"></div>
+    </aside>
+  </main>
+
+  <section id="placard" class="placard">
+    <div class="placard-header">
+      <div>
+        <h2 id="placard-title"></h2>
+        <p id="placard-subtitle" class="placard-subtitle"></p>
+      </div>
+      <button id="placard-toggle" class="placard-toggle-btn">▾ Hide commentary</button>
+    </div>
+    <div id="placard-body">
+      <p id="placard-text" class="placard-text"></p>
+    </div>
+  </section>
+
+  <footer>
+    <p id="info-bar" class="info-bar"></p>
+    <p class="credits">
+      Inspired by <a href="https://github.com/dvelton/ai-pixel">ai-pixel</a> ·
+      Built with vanilla JS + HTML Canvas ·
+      <a href="https://github.com/jessephus/model-mosaic">Source</a>
+    </p>
+  </footer>
+
+  <script src="colormaps.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

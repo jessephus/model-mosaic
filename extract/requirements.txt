@@ -1,0 +1,5 @@
+onnx
+numpy
+huggingface_hub
+torch
+torchvision
